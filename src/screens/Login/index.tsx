@@ -1,74 +1,108 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
+import * as Yup from 'yup';
 import { useNavigation } from '@react-navigation/native';
-import { Alert } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { FormHandles } from '@unform/core';
 import {
   Container,
-  Content,
-  Title,
+  Logo,
   CreateAccount,
   CreateAccountText,
+  Form,
 } from './styles';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
-import { useAuth } from '../../hooks/auth';
+import { useAuth, ICredentials } from '../../hooks/auth';
+import logo from '../../assets/logo.png';
+import { getValidationErrors } from '../../utils/getValidationErrors';
+import { themes } from '../../themes';
 
 const Login: React.FC = () => {
-  const { signIn } = useAuth();
+  const formRef = useRef<FormHandles>(null);
+  const { signIn, loading } = useAuth();
   const { navigate } = useNavigation();
 
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const handleSubmit = useCallback(
+    async (data: ICredentials) => {
+      try {
+        formRef.current?.setErrors({});
+        const schema = Yup.object().shape({
+          email: Yup.string().required('Email obrigatório').email(),
+          password: Yup.string().min(6, 'No mínimo 6 digitos'),
+        });
 
-  const [hasError, setHasError] = useState(false);
+        await schema.validate(data, { abortEarly: false });
 
-  const handleSubmit = useCallback(async () => {
-    try {
-      if (!email || !password) {
-        setHasError(true);
-        return;
+        await signIn(data);
+      } catch (err) {
+        if (err instanceof Yup.ValidationError) {
+          const errors = getValidationErrors(err);
+
+          formRef.current?.setErrors(errors);
+
+          return;
+        }
+
+        Alert.alert(
+          'Erro na autenticação',
+          `Ocorreu o erro ${err}. Tente novamente!`
+        );
       }
+    },
+    [signIn]
+  );
 
-      setHasError(false);
-      await signIn({ email, password });
-    } catch (error) {
-      Alert.alert('Erro', 'Erro ao fazer login, verifique suas credenciais');
-      setHasError(true);
-    }
-  }, [email, password, signIn]);
+  const submitForm = useCallback(() => {
+    formRef.current?.submitForm();
+  }, []);
 
   return (
-    <Container>
-      <Title>Login</Title>
-      <Content>
-        <Input
-          value={email}
-          onChangeText={setEmail}
-          error={hasError}
-          keyboardType="email-address"
-          autoCompleteType="email"
-          autoCapitalize="none"
-          autoCorrect={false}
-          icon="email"
-          placeholder="Email"
-        />
-        <Input
-          value={password}
-          onChangeText={setPassword}
-          error={hasError}
-          isSecurity
-          icon="lock"
-          placeholder="Senha"
-          autoCompleteType="password"
-          textContentType="password"
-        />
+    <>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'android' ? undefined : 'padding'}
+        enabled={Platform.OS !== 'android'}
+        style={{ flex: 1, backgroundColor: themes.colors.background }}
+      >
+        <ScrollView keyboardShouldPersistTaps="handled">
+          <Container>
+            <Logo source={logo} />
 
-        <Button onPress={handleSubmit}>Entrar</Button>
-      </Content>
+            <Form ref={formRef} onSubmit={handleSubmit}>
+              <Input
+                keyboardType="email-address"
+                autoCompleteType="email"
+                autoCapitalize="none"
+                autoCorrect={false}
+                name="email"
+                icon="mail"
+                placeholder="Email"
+              />
+              <Input
+                isSecurity
+                icon="lock"
+                placeholder="Senha"
+                name="password"
+                autoCompleteType="password"
+                textContentType="password"
+              />
+
+              <Button onPress={submitForm}>
+                {loading ? 'Carregando...' : 'Entrar'}
+              </Button>
+            </Form>
+          </Container>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <CreateAccount onPress={() => navigate('Register')}>
         <CreateAccountText>Cadastre-se</CreateAccountText>
       </CreateAccount>
-    </Container>
+    </>
   );
 };
 

@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components/native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { themes } from '../../themes';
 
 interface IContainerProps {
@@ -40,10 +40,9 @@ export const TextInput = styled.TextInput`
   flex: 1;
   color: ${themes.colors.light};
   font-size: 18px;
-  font-family: ${themes.fonts.medium};
 `;
 
-export const Icon = styled(MaterialCommunityIcons)`
+export const Icon = styled(Feather)`
   margin-right: 12px;
 `;
 

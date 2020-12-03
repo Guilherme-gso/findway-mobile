@@ -1,10 +1,13 @@
+import { Platform } from 'react-native';
 import styled from 'styled-components/native';
+import { Form as Unform } from '@unform/mobile';
 import { themes } from '../../themes';
 
 export const Container = styled.View`
   flex: 1;
   align-items: center;
   justify-content: center;
+  padding: 40px 30px ${Platform.OS === 'android' ? 120 : 100}px;
   background: ${themes.colors.background};
 `;
 
@@ -21,12 +24,22 @@ export const Content = styled.View`
   width: 100%;
 `;
 
+export const Form = styled(Unform)`
+  width: 100%;
+`;
+
+export const Logo = styled.Image`
+  height: 180px;
+  width: 180px;
+`;
+
 export const CreateAccount = styled.TouchableOpacity`
   position: absolute;
-  bottom: 80px;
+  bottom: 0;
+  padding: 10px 0;
 
   width: 100%;
-  background: transparent;
+  background: ${themes.colors.background};
   align-items: center;
   justify-content: center;
 `;
@@ -34,5 +47,5 @@ export const CreateAccount = styled.TouchableOpacity`
 export const CreateAccountText = styled.Text`
   font-size: 22px;
   color: ${themes.colors.primary};
-  font-family: ${themes.fonts.semi};
+  font-family: ${themes.fonts.light};
 `;

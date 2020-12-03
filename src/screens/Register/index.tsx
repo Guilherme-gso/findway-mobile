@@ -1,87 +1,136 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import * as Yup from 'yup';
 import { useNavigation } from '@react-navigation/native';
-import { Alert } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { FormHandles } from '@unform/core';
 import {
   Container,
-  Content,
-  Title,
+  Logo,
+  Form,
   RegisterButton,
   RegisterText,
+  ButtonLogin,
+  ButtonLoginText,
 } from './styles';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
+import logo from '../../assets/logo.png';
 import { api } from '../../services/api';
+import { getValidationErrors } from '../../utils/getValidationErrors';
+import { ISetUser, useAuth } from '../../hooks/auth';
+import { themes } from '../../themes';
 
 const Register: React.FC = () => {
-  const { goBack } = useNavigation();
+  const { setUser } = useAuth();
+  const formRef = useRef<FormHandles>(null);
 
-  const [name, setName] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const { navigate } = useNavigation();
 
-  const [hasError, setHasError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = useCallback(async () => {
-    if (!email || !password || !name) {
-      setHasError(true);
-      return;
-    }
+  const handleSignUp = useCallback(
+    async data => {
+      try {
+        setLoading(false);
+        formRef.current?.setErrors({});
 
-    try {
-      await api.post('/users', { name, email, password });
-      Alert.alert('Sua conta foi criada com sucesso', 'Agora é só fazer login');
-    } catch (error) {
-      Alert.alert(
-        'Erro',
-        'Os dados fornecidos já estão em uso por outro usuário'
-      );
-      setHasError(true);
-    }
-  }, [name, email, password]);
+        const schema = Yup.object().shape({
+          name: Yup.string().required('Nome obrigatório'),
+          email: Yup.string().required('Email obrigatório').email(),
+          password: Yup.string().min(6, 'No mínimo 6 digitos'),
+        });
+
+        await schema.validate(data, { abortEarly: false });
+
+        const {
+          data: { user, token },
+        } = await api.post<ISetUser>('/users', data);
+
+        setUser({ user, token });
+      } catch (err) {
+        if (err instanceof Yup.ValidationError) {
+          const errors = getValidationErrors(err);
+
+          formRef.current?.setErrors(errors);
+
+          return;
+        }
+
+        Alert.alert(
+          'Houve um erro ao criar sua conta!',
+          'Os dados fornecidos já estão em uso por outro usúario'
+        );
+      } finally {
+        setLoading(true);
+      }
+    },
+    [setUser]
+  );
+
+  const submitForm = useCallback(() => {
+    formRef.current?.submitForm();
+  }, []);
 
   return (
-    <Container>
-      <Title>Cadastre-se</Title>
-      <Content>
-        <Input
-          value={name}
-          onChangeText={setName}
-          error={hasError}
-          keyboardType="default"
-          autoCapitalize="none"
-          autoCorrect={false}
-          icon="account"
-          placeholder="Nome"
-        />
-        <Input
-          value={name}
-          onChangeText={setEmail}
-          error={hasError}
-          keyboardType="email-address"
-          autoCompleteType="email"
-          autoCapitalize="none"
-          autoCorrect={false}
-          icon="email"
-          placeholder="Email"
-        />
-        <Input
-          value={password}
-          onChangeText={setPassword}
-          error={hasError}
-          isSecurity
-          icon="lock"
-          placeholder="Senha"
-          autoCompleteType="password"
-          textContentType="password"
-        />
+    <>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'android' ? undefined : 'padding'}
+        enabled={Platform.OS !== 'android'}
+        style={{ flex: 1, backgroundColor: themes.colors.background }}
+      >
+        <ScrollView keyboardShouldPersistTaps="handled">
+          <Container>
+            <Logo source={logo} />
 
-        <Button onPress={handleSubmit}>Cadastrar</Button>
-      </Content>
+            <Form ref={formRef} onSubmit={handleSignUp}>
+              <Input
+                keyboardType="default"
+                autoCompleteType="name"
+                autoCapitalize="words"
+                autoCorrect={false}
+                icon="user"
+                name="name"
+                placeholder="Nome"
+              />
+              <Input
+                keyboardType="email-address"
+                autoCompleteType="email"
+                autoCapitalize="none"
+                autoCorrect={false}
+                icon="mail"
+                name="email"
+                placeholder="Email"
+              />
+              <Input
+                isSecurity
+                icon="lock"
+                placeholder="Senha"
+                name="password"
+                autoCompleteType="password"
+                textContentType="password"
+              />
 
-      <RegisterButton onPress={goBack}>
-        <RegisterText>Fazer login</RegisterText>
+              <Button onPress={submitForm}>
+                {loading ? 'Carregando...' : 'Cadastrar'}
+              </Button>
+
+              <ButtonLogin onPress={() => navigate('Login')}>
+                <ButtonLoginText>Fazer Login</ButtonLoginText>
+              </ButtonLogin>
+            </Form>
+          </Container>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <RegisterButton onPress={() => navigate('WelcomeDriver')}>
+        <RegisterText>Cadastre seus serviços</RegisterText>
       </RegisterButton>
-    </Container>
+    </>
   );
 };
 

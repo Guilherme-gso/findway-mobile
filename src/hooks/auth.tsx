@@ -10,19 +10,28 @@ import AsyncStorage from '@react-native-community/async-storage';
 import { api } from '../services/api';
 import { storageToken, storageUser } from '../constants/storage';
 
-interface ICredentials {
+export interface ICredentials {
   email: string;
   password: string;
 }
 
-interface IUser {
+export interface IUser {
   id: string;
   name: string;
   email: string;
+  avatar_url: string;
+  isDriver: boolean;
+  driver_id?: string;
+}
+
+export interface ISetUser {
+  user: IUser;
+  token: string;
 }
 
 interface IAuthContextData {
   signIn(credentials: ICredentials): Promise<void>;
+  setUser(data: ISetUser): void;
   signOut(): void;
   user: IUser;
   token: string;
@@ -56,9 +65,27 @@ const AuthProvider: React.FC = ({ children }) => {
   }, []);
 
   const signIn = useCallback(async (userData: ICredentials) => {
-    const response = await api.post<IAuthState>('/users/sessions', userData);
-    const { token, user } = response.data;
+    setLoading(true);
+    const response = await api.post('/users/sessions', userData);
+    const { data: result } = response;
 
+    AsyncStorage.multiSet([
+      [
+        storageUser,
+        JSON.stringify({ ...result.user, driver_id: result.driver_id }),
+      ],
+      [storageToken, result.token],
+    ]);
+
+    setData({
+      user: { ...result.user, driver_id: result.driver_id },
+      token: result.token,
+    });
+
+    setLoading(false);
+  }, []);
+
+  const setUser = useCallback(({ user, token }: ISetUser) => {
     AsyncStorage.multiSet([
       [storageUser, JSON.stringify(user)],
       [storageToken, token],
@@ -76,11 +103,12 @@ const AuthProvider: React.FC = ({ children }) => {
     () => ({
       signIn,
       signOut,
+      setUser,
       user: data.user,
       token: data.token,
       loading,
     }),
-    [data, signIn, signOut, loading]
+    [data, signIn, signOut, setUser, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

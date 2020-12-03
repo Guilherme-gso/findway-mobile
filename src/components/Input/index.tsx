@@ -1,70 +1,103 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { TextInputProps, TextInput as ITextInput } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useField } from '@unform/core';
+import { TextInputProps, TextInput } from 'react-native';
+import * as Styled from './styles';
 import { themes } from '../../themes';
-import { Container, TextInput, Icon, Security } from './styles';
 
-interface IInputProps extends TextInputProps {
+interface InputProps extends TextInputProps {
+  name: string;
   icon?: string;
   isSecurity?: boolean;
-  error: boolean;
-  value: string;
 }
 
-const Input: React.FC<IInputProps> = ({
-  icon,
-  isSecurity,
-  value,
-  error,
-  ...rest
-}) => {
-  const inputRef = useRef<ITextInput>(null);
+const Input: React.FC<InputProps> = ({ name, icon, isSecurity, ...rest }) => {
+  const {
+    defaultValue = '',
+    clearError,
+    fieldName,
+    error,
+    registerField,
+  } = useField(name);
   const [isFocused, setIsFocused] = useState(false);
-  const [isFilled, setIsFilled] = useState(false);
-  const [isErrored, setIsErrored] = useState(false);
-
+  const inputCurrentElementRef = useRef<TextInput>(null);
   const [inputSecurity, setInputSecurity] = useState(isSecurity);
+
+  const inputCurrentValueRef = useRef<TextInputProps>({
+    value: defaultValue,
+  });
+
+  const [isFilled, setIsFilled] = useState(
+    !!inputCurrentValueRef.current.value
+  );
+
+  const handleIsFocused = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+
+  const handleIsBlur = useCallback(() => {
+    setIsFocused(false);
+
+    setIsFilled(!!inputCurrentValueRef.current.value);
+  }, []);
+
   const handleToggleInputSecurity = useCallback(() => {
     setInputSecurity(!inputSecurity);
   }, [inputSecurity]);
 
-  const handleFocus = useCallback(() => {
-    setIsFocused(!isFocused);
-  }, [isFocused]);
-
-  const handleBlur = useCallback(() => {
-    setIsFocused(false);
-    setIsFilled(!!value);
-  }, [value]);
-
   useEffect(() => {
-    setIsErrored(error);
-  }, [error]);
+    registerField({
+      name: fieldName,
+      ref: inputCurrentValueRef.current,
+      path: 'value',
+      setValue(_, value: string) {
+        inputCurrentValueRef.current.value = value;
+        inputCurrentElementRef.current?.setNativeProps({ text: value });
+      },
+      clearValue() {
+        inputCurrentValueRef.current.value = '';
+        inputCurrentElementRef.current?.clear();
+      },
+    });
+  }, [registerField, fieldName]);
 
   return (
-    <Container isErrored={isErrored} isFocused={isFocused}>
-      <Icon
+    <Styled.Container isErrored={!!error} isFocused={isFocused}>
+      <Styled.Icon
         name={icon}
-        size={22}
-        color={isFilled ? themes.colors.primary : themes.colors.light}
+        color={
+          isFilled
+            ? themes.colors.primary
+            : error
+            ? themes.alerts.error
+            : themes.colors.light
+        }
+        size={20}
       />
-      <TextInput
-        ref={inputRef}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+      <Styled.TextInput
+        ref={inputCurrentElementRef}
+        onChangeText={value => {
+          inputCurrentValueRef.current.value = value;
+        }}
+        onKeyPress={clearError}
+        defaultValue={defaultValue}
+        placeholderTextColor={error ? themes.alerts.error : themes.colors.light}
+        keyboardAppearance="default"
+        onFocus={handleIsFocused}
         secureTextEntry={inputSecurity}
-        placeholderTextColor={themes.colors.light}
+        onBlur={handleIsBlur}
         {...rest}
       />
+
       {isSecurity && (
-        <Security onPress={handleToggleInputSecurity}>
-          <Icon
+        <Styled.Security onPress={handleToggleInputSecurity}>
+          <Styled.Icon
             name={inputSecurity ? 'eye' : 'eye-off'}
             size={22}
-            color={themes.colors.primary}
+            color={error ? themes.alerts.error : themes.colors.light}
           />
-        </Security>
+        </Styled.Security>
       )}
-    </Container>
+    </Styled.Container>
   );
 };
 

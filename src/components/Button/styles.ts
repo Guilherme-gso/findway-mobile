@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import styled from 'styled-components/native';
 import { themes } from '../../themes';
 
@@ -11,7 +11,6 @@ export const Container = styled.TouchableOpacity`
   align-items: center;
 
   border-radius: 4px;
-  box-shadow: 0 5px 5px rgba(239, 205, 61, 0.2);
 `;
 
 export const ButtonText = styled.Text`
@@ -20,6 +19,6 @@ export const ButtonText = styled.Text`
   font-family: ${themes.fonts.medium};
 `;
 
-export const Icon = styled(MaterialCommunityIcons)`
+export const Icon = styled(MaterialIcons)`
   margin-left: 12px;
 `;

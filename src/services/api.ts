@@ -1,5 +1,5 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: 'http://192.168.0.97:3333',
+  baseURL: 'https://findway-tcc-2.herokuapp.com',
 });
